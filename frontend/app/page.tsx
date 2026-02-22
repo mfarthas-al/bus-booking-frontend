@@ -1,158 +1,156 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import StepIndicator from "./components/StepIndicator";
 
 export default function Home() {
-  const [routes, setRoutes] = useState<any[]>([]);
+  const router = useRouter();
   const [selectedDate, setSelectedDate] = useState("");
   const [schedules, setSchedules] = useState<any[]>([]);
-  const [selectedSchedule, setSelectedSchedule] = useState<any>(null);
-  const [seats, setSeats] = useState<any[]>([]);
-  const [selectedSeat, setSelectedSeat] = useState<number | null>(null);
-  const [passengerName, setPassengerName] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [bookingResult, setBookingResult] = useState<any>(null);
-
-  useEffect(() => {
-    fetch("http://localhost:8080/api/routes")
-      .then((res) => res.json())
-      .then((data) => setRoutes(data));
-  }, []);
+  const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
 
   const fetchSchedules = () => {
     if (!selectedDate) return;
-
+    setLoading(true);
+    setSearched(true);
     fetch(`http://localhost:8080/api/schedules/by-date?date=${selectedDate}`)
       .then((res) => res.json())
-      .then((data) => setSchedules(data));
-  };
-
-  const fetchSeats = (scheduleId: number) => {
-    fetch(`http://localhost:8080/api/seats?scheduleId=${scheduleId}`)
-      .then((res) => res.json())
-      .then((data) => setSeats(data));
-  };
-
-  const handleBooking = () => {
-    fetch(
-      `http://localhost:8080/api/bookings?seatId=${selectedSeat}&passengerName=${passengerName}&phoneNumber=${phoneNumber}`,
-      {
-        method: "POST",
-      },
-    )
-      .then((res) => res.json())
       .then((data) => {
-        setBookingResult(data);
-        fetchSeats(selectedSchedule.id); // refresh seats
-      });
+        setSchedules(data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   };
+
+  const handleSelectSchedule = (schedule: any) => {
+    // Store schedule info for the next page
+    localStorage.setItem("selectedSchedule", JSON.stringify(schedule));
+    router.push(`/seats/${schedule.id}`);
+  };
+
+  // Get today's date in YYYY-MM-DD for min attribute
+  const today = new Date().toISOString().split("T")[0];
 
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold mb-4">Bus Booking</h1>
+    <div className="animate-fade-in">
+      <StepIndicator currentStep={1} />
 
-      {/* Date Picker */}
-      <div className="mb-4">
-        <input
-          type="date"
-          className="border p-2"
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
-        />
-        <button
-          onClick={fetchSchedules}
-          className="ml-2 bg-blue-500 text-white px-4 py-2 rounded"
-        >
-          Search
-        </button>
+      {/* Hero Section */}
+      <div className="text-center mb-10">
+        <h1 className="text-4xl font-extrabold text-gray-900 mb-3">
+          Find Your <span className="text-indigo-600">Bus</span>
+        </h1>
+        <p className="text-gray-500 text-lg">Select a travel date to browse available schedules</p>
       </div>
 
-      {/* Schedules */}
-      <div>
-        {schedules.map((schedule) => (
-          <div key={schedule.id} className="p-4 border rounded mb-2">
-            <p>
-              {schedule.bus.route.fromCity} → {schedule.bus.route.toCity}
-            </p>
-            <p>Bus: {schedule.bus.busNumber}</p>
-            <p>
-              {schedule.departureTime} - {schedule.arrivalTime}
-            </p>
-            <button
-              onClick={() => {
-                setSelectedSchedule(schedule);
-                fetchSeats(schedule.id);
-              }}
-              className="mt-2 bg-green-500 text-white px-3 py-1 rounded"
-            >
-              Select Seats
-            </button>
+      {/* Date Picker Card */}
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 mb-10 max-w-2xl mx-auto">
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="flex-1 w-full">
+            <label className="block text-sm font-semibold text-gray-600 mb-2">Travel Date</label>
+            <input
+              type="date"
+              min={today}
+              className="w-full border-2 border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 rounded-xl p-3.5 text-gray-800 outline-none transition-all text-lg"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+            />
           </div>
-        ))}
-        {selectedSchedule && (
-          <div className="mt-8">
-            <h2 className="text-xl font-bold mb-4">Select Seat</h2>
+          <button
+            onClick={fetchSchedules}
+            disabled={!selectedDate || loading}
+            className="w-full sm:w-auto sm:mt-7 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-8 py-3.5 rounded-xl font-semibold transition-all shadow-lg shadow-indigo-200 disabled:shadow-none flex items-center justify-center gap-2 cursor-pointer"
+          >
+            {loading ? (
+              <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            )}
+            {loading ? "Searching..." : "Search"}
+          </button>
+        </div>
+      </div>
 
-            <div className="grid grid-cols-4 gap-4 max-w-md">
-              {seats.map((seat) => (
-                <div
-                  key={seat.id}
-                  onClick={() => !seat.isBooked && setSelectedSeat(seat.id)}
-                  className={`
-            p-4 text-center rounded cursor-pointer
-            ${
-              seat.isBooked
-                ? "bg-red-400 cursor-not-allowed"
-                : selectedSeat === seat.id
-                  ? "bg-blue-500 text-white"
-                  : "bg-green-400"
-            }
-          `}
-                >
-                  {seat.seatNumber}
+      {/* Schedules List */}
+      {searched && !loading && schedules.length === 0 && (
+        <div className="text-center py-16">
+          <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 2a10 10 0 110 20 10 10 0 010-20z" />
+          </svg>
+          <p className="text-gray-400 text-lg font-medium">No schedules found for this date</p>
+          <p className="text-gray-400 text-sm mt-1">Try selecting a different date</p>
+        </div>
+      )}
+
+      {schedules.length > 0 && (
+        <div className="space-y-4 animate-slide-up">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">
+            Available Schedules
+            <span className="text-sm font-normal text-gray-400 ml-2">
+              ({schedules.length} found)
+            </span>
+          </h2>
+
+          {schedules.map((schedule, index) => (
+            <div
+              key={schedule.id}
+              className="bg-white rounded-2xl shadow-md hover:shadow-xl border border-gray-100 p-6 transition-all duration-300 hover:-translate-y-1"
+              style={{ animationDelay: `${index * 0.1}s` }}
+            >
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex-1">
+                  {/* Route */}
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-lg font-bold text-gray-900">
+                      {schedule.bus.fromCity}
+                    </span>
+                    <div className="flex items-center text-indigo-400">
+                      <div className="w-2 h-2 rounded-full bg-indigo-400" />
+                      <div className="w-12 h-0.5 bg-indigo-200" />
+                      <svg className="w-5 h-5 -ml-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <span className="text-lg font-bold text-gray-900">
+                      {schedule.bus.toCity}
+                    </span>
+                  </div>
+
+                  {/* Details */}
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                    <span className="flex items-center gap-1.5">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      Bus: <strong className="text-gray-700">{schedule.bus.busNumber}</strong>
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {schedule.departureTime} → {schedule.arrivalTime}
+                    </span>
+                  </div>
                 </div>
-              ))}
+
+                <button
+                  onClick={() => handleSelectSchedule(schedule)}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-semibold transition-all shadow-md hover:shadow-lg cursor-pointer whitespace-nowrap"
+                >
+                  Select Seats →
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-        {selectedSeat && (
-          <div className="mt-6 max-w-md">
-            <h3 className="text-lg font-bold mb-2">Passenger Details</h3>
-
-            <input
-              type="text"
-              placeholder="Passenger Name"
-              className="border p-2 w-full mb-2"
-              onChange={(e) => setPassengerName(e.target.value)}
-            />
-
-            <input
-              type="text"
-              placeholder="Phone Number"
-              className="border p-2 w-full mb-2"
-              onChange={(e) => setPhoneNumber(e.target.value)}
-            />
-
-            <button
-              onClick={handleBooking}
-              className="bg-blue-600 text-white px-4 py-2 rounded w-full"
-            >
-              Confirm Booking
-            </button>
-          </div>
-        )}
-        {bookingResult && (
-          <div className="mt-6 p-4 bg-green-100 rounded">
-            <h3 className="font-bold">Booking Confirmed 🎉</h3>
-            <p>Booking ID: {bookingResult.data.bookingCode}</p>
-            <p>Bus: {bookingResult.data.busNumber}</p>
-            <p>Route: {bookingResult.data.route}</p>
-            <p>Seat: {bookingResult.data.seatNumber}</p>
-            <p>Departure: {bookingResult.data.departureTime}</p>
-            <p>Arrival: {bookingResult.data.arrivalTime}</p>
-          </div>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
