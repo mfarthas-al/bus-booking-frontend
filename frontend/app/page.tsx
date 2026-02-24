@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {  useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import StepIndicator from "./components/StepIndicator";
 
 export default function Home() {
@@ -76,6 +77,19 @@ export default function Home() {
             {loading ? "Searching..." : "Search"}
           </button>
         </div>
+      </div>
+
+      {/* Track Booking CTA */}
+      <div className="flex justify-center mb-10">
+        <Link
+          href="/search"
+          className="flex items-center gap-2.5 bg-white border-2 border-indigo-100 hover:border-indigo-400 text-indigo-600 hover:text-indigo-700 px-6 py-3 rounded-xl font-semibold transition-all shadow-sm hover:shadow-md text-sm"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Already booked? Track your booking
+        </Link>
       </div>
 
       {/* Schedules List */}

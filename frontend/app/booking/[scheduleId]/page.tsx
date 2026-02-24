@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import StepIndicator from "../../components/StepIndicator";
 import ConfirmationModal from "../../components/ConfirmationModal";
+import ConfirmDialog from "../../components/ConfirmDialog";
 
 export default function BookingPage() {
   const params = useParams();
@@ -17,13 +18,22 @@ export default function BookingPage() {
   const [bookingResult, setBookingResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; phone?: string }>({});
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     const storedSchedule = localStorage.getItem("selectedSchedule");
     const storedSeat = localStorage.getItem("selectedSeat");
 
     if (storedSchedule) setSchedule(JSON.parse(storedSchedule));
-    if (storedSeat) setSeat(JSON.parse(storedSeat));
+    if (storedSeat) {
+      const parsedSeat = JSON.parse(storedSeat);
+      // If seat is no longer AVAILABLE (e.g. reserved/booked between steps), go back
+      if (parsedSeat.status?.toUpperCase() !== "AVAILABLE") {
+        router.push(`/seats/${scheduleId}`);
+        return;
+      }
+      setSeat(parsedSeat);
+    }
 
     // Redirect if missing data
     if (!storedSchedule || !storedSeat) {
@@ -33,20 +43,36 @@ export default function BookingPage() {
 
   const validate = () => {
     const newErrors: { name?: string; phone?: string } = {};
-    if (!passengerName.trim()) newErrors.name = "Name is required";
-    if (!phoneNumber.trim()) newErrors.phone = "Phone number is required";
-    else if (!/^\d{7,15}$/.test(phoneNumber.replace(/[\s-]/g, "")))
-      newErrors.phone = "Enter a valid phone number";
+
+    if (!passengerName.trim()) {
+      newErrors.name = "Name is required";
+    } else if (!/^[A-Za-z\s]+$/.test(passengerName.trim())) {
+      newErrors.name = "Name must contain letters only";
+    }
+
+    // phoneNumber state holds only the 8 digits after "07"
+    if (!phoneNumber.trim()) {
+      newErrors.phone = "Phone number is required";
+    } else if (!/^\d{8}$/.test(phoneNumber)) {
+      newErrors.phone = "Enter the remaining 8 digits after 07";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleBooking = () => {
     if (!validate()) return;
+    setShowConfirm(true);
+  };
+
+  const executeBooking = () => {
+    setShowConfirm(false);
     setLoading(true);
 
+    const fullPhone = "07" + phoneNumber;
     fetch(
-      `http://localhost:8080/api/bookings?seatId=${seat.id}&passengerName=${encodeURIComponent(passengerName)}&phoneNumber=${encodeURIComponent(phoneNumber)}`,
+      `http://localhost:8080/api/bookings?seatId=${seat.id}&passengerName=${encodeURIComponent(passengerName)}&phoneNumber=${encodeURIComponent(fullPhone)}`,  
       { method: "POST" }
     )
       .then((res) => res.json())
@@ -135,7 +161,9 @@ export default function BookingPage() {
                 type="text"
                 value={passengerName}
                 onChange={(e) => {
-                  setPassengerName(e.target.value);
+                  // Only allow letters and spaces
+                  const val = e.target.value.replace(/[^A-Za-z\s]/g, "");
+                  setPassengerName(val);
                   if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
                 }}
                 placeholder="Enter your full name"
@@ -160,20 +188,28 @@ export default function BookingPage() {
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Phone Number <span className="text-red-400">*</span>
               </label>
-              <input
-                type="tel"
-                value={phoneNumber}
-                onChange={(e) => {
-                  setPhoneNumber(e.target.value);
-                  if (errors.phone) setErrors((prev) => ({ ...prev, phone: undefined }));
-                }}
-                placeholder="Enter your phone number"
-                className={`w-full border-2 rounded-xl p-4 outline-none transition-all text-gray-800 ${
+              <div className={`flex items-center border-2 rounded-xl overflow-hidden transition-all ${
                   errors.phone
-                    ? "border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100"
-                    : "border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
-                }`}
-              />
+                    ? "border-red-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-100"
+                    : "border-gray-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-100"
+                }`}>
+                <span className="px-4 py-4 bg-gray-100 text-gray-600 font-bold text-sm select-none border-r-2 border-gray-200">
+                  07
+                </span>
+                <input
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(e) => {
+                    // Only allow digits, max 8
+                    const val = e.target.value.replace(/\D/g, "").slice(0, 8);
+                    setPhoneNumber(val);
+                    if (errors.phone) setErrors((prev) => ({ ...prev, phone: undefined }));
+                  }}
+                  placeholder="XXXXXXXX"
+                  maxLength={8}
+                  className="flex-1 p-4 outline-none text-gray-800 bg-white"
+                />
+              </div>
               {errors.phone && (
                 <p className="mt-2 text-sm text-red-500 flex items-center gap-1">
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -227,6 +263,15 @@ export default function BookingPage() {
           onClose={handleModalClose}
         />
       )}
+
+      <ConfirmDialog
+        open={showConfirm}
+        title="Confirm Your Booking"
+        message={`Book seat ${seat?.seatNumber} for ${passengerName || "passenger"}?`}
+        confirmLabel="Yes, Book Now"
+        onConfirm={executeBooking}
+        onCancel={() => setShowConfirm(false)}
+      />
     </div>
   );
 }

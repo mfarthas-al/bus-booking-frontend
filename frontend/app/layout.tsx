@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Bus Booking",
+  title: "BusSeat.lk",
   description: "Book your bus tickets online",
 };
 
@@ -32,7 +32,7 @@ export default function RootLayout({
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h8m-8 4h4m-2 5v2m4-2v2M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            <a href="/" className="text-2xl font-bold tracking-tight">BusBook</a>
+            <a href="/" className="text-2xl font-bold tracking-tight">BusSeat.lk</a>
           </div>
         </header>
         <main className="max-w-5xl mx-auto px-6 py-8">
